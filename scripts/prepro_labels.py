@@ -46,9 +46,11 @@ def build_vocab(imgs, params):
   # count up the number of words
   counts = {}
   for img in imgs:
-    for sent in img['sentences']:
-      for w in sent['tokens']:
+    for sent in img['captions']:
+      words = sent.split(" ")
+      for w in words:
         counts[w] = counts.get(w, 0) + 1
+
   cw = sorted([(count,w) for w,count in counts.items()], reverse=True)
   print('top words and their counts:')
   print('\n'.join(map(str,cw[:20])))
@@ -66,8 +68,8 @@ def build_vocab(imgs, params):
   # lets look at the distribution of lengths as well
   sent_lengths = {}
   for img in imgs:
-    for sent in img['sentences']:
-      txt = sent['tokens']
+    for sent in img['captions']:
+      txt = sent.split(" ")
       nw = len(txt)
       sent_lengths[nw] = sent_lengths.get(nw, 0) + 1
   max_len = max(sent_lengths.keys())
@@ -85,8 +87,8 @@ def build_vocab(imgs, params):
   
   for img in imgs:
     img['final_captions'] = []
-    for sent in img['sentences']:
-      txt = sent['tokens']
+    for sent in img['captions']:
+      txt = sent.split(" ")
       caption = [w if counts.get(w,0) > count_thr else 'UNK' for w in txt]
       img['final_captions'].append(caption)
 
@@ -139,7 +141,7 @@ def encode_captions(imgs, params, wtoi):
 def main(params):
 
   imgs = json.load(open(params['input_json'], 'r'))
-  imgs = imgs['images']
+  #imgs = imgs['images']
 
   seed(123) # make reproducible
   
@@ -168,14 +170,11 @@ def main(params):
     
     jimg = {}
     jimg['split'] = img['split']
-    if 'filename' in img: jimg['file_path'] = os.path.join(img.get('filepath', ''), img['filename']) # copy it over, might need
-    if 'cocoid' in img:
-      jimg['id'] = img['cocoid'] # copy over & mantain an id, if present (e.g. coco ids, useful)
-    elif 'imgid' in img:
-      jimg['id'] = img['imgid']
+    if 'file_path' in img: jimg['file_path'] = os.path.join(img.get('filepath', ''), img['file_path']) # copy it over, might need
+    jimg['id'] = img['id']
 
     if params['images_root'] != '':
-      with Image.open(os.path.join(params['images_root'], img['filepath'], img['filename'])) as _img:
+      with Image.open(os.path.join(params['images_root'], img['file_path'])) as _img:
         jimg['width'], jimg['height'] = _img.size
 
     out['images'].append(jimg)
@@ -194,7 +193,7 @@ if __name__ == "__main__":
   parser.add_argument('--images_root', default='', help='root location in which images are stored, to be prepended to file_path in input json')
 
   # options
-  parser.add_argument('--max_length', default=16, type=int, help='max length of a caption, in number of words. captions longer than this get clipped.')
+  parser.add_argument('--max_length', default=275, type=int, help='max length of a caption, in number of words. captions longer than this get clipped.')
   parser.add_argument('--word_count_threshold', default=5, type=int, help='only words that occur more than this number of times will be put in vocab')
 
   args = parser.parse_args()

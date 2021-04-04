@@ -50,6 +50,7 @@ from misc.resnet_utils import myResnet
 import misc.resnet as resnet
 
 def main(params):
+  print(torch.version.cuda)
   net = getattr(resnet, params['model'])()
   net.load_state_dict(torch.load(os.path.join(params['model_root'],params['model']+'.pth')))
   my_resnet = myResnet(net)
@@ -57,7 +58,7 @@ def main(params):
   my_resnet.eval()
 
   imgs = json.load(open(params['input_json'], 'r'))
-  imgs = imgs['images']
+  #imgs = imgs['images']
   N = len(imgs)
 
   seed(123) # make reproducible
@@ -71,7 +72,7 @@ def main(params):
 
   for i,img in enumerate(imgs):
     # load the image
-    I = skimage.io.imread(os.path.join(params['images_root'], img['filepath'], img['filename']))
+    I = skimage.io.imread(os.path.join(params['images_root'], img['file_path']))
     # handle grayscale input images
     if len(I.shape) == 2:
       I = I[:,:,np.newaxis]
@@ -79,14 +80,15 @@ def main(params):
 
     I = I.astype('float32')/255.0
     I = torch.from_numpy(I.transpose([2,0,1])).cuda()
+    #I = torch.from_numpy(I.transpose([2,0,1]))
     I = preprocess(I)
     with torch.no_grad():
       tmp_fc, tmp_att = my_resnet(I, params['att_size'])
     # write to pkl
-    np.save(os.path.join(dir_fc, str(img['cocoid'])), tmp_fc.data.cpu().float().numpy())
-    np.savez_compressed(os.path.join(dir_att, str(img['cocoid'])), feat=tmp_att.data.cpu().float().numpy())
+    np.save(os.path.join(dir_fc, str(img['id'])), tmp_fc.data.cpu().float().numpy())
+    np.savez_compressed(os.path.join(dir_att, str(img['id'])), feat=tmp_att.data.cpu().float().numpy())
 
-    if i % 1000 == 0:
+    if i % 100 == 0:
       print('processing %d/%d (%.2f%% done)' % (i, N, i*100.0/N))
   print('wrote ', params['output_dir'])
 
